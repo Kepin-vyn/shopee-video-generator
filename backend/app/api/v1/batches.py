@@ -320,7 +320,6 @@ def regenerate_video(
 @router.get("/{batch_id}/download")
 def download_batch_zip(
     batch_id: str,
-    token: str = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -378,29 +377,18 @@ def download_single_video(
 @router.get("/videos/{video_id}/stream")
 def stream_single_video(
     video_id: str,
-    token: str,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """
-    Stream/download a video using token as query param.
+    Stream/download a video using token as query param or Bearer header.
     Allows <video src="...?token=..."> and <a href="...?token=..."> in browser.
     """
-    from app.core.security import decode_access_token
-    from app.models.models import User as UserModel
-
-    user_id = decode_access_token(token)
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Invalid token")
-
-    user = db.query(UserModel).filter(UserModel.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=401, detail="User not found")
-
     video = db.query(Video).filter(Video.id == video_id).first()
     if not video:
         raise HTTPException(status_code=404, detail="Video not found")
 
-    _get_batch_or_404(video.batch_id, user, db)
+    _get_batch_or_404(video.batch_id, current_user, db)
 
     if not video.output_path or not os.path.exists(video.output_path):
         raise HTTPException(status_code=404, detail="Video file not found on disk")

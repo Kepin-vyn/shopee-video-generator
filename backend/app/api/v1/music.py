@@ -105,27 +105,16 @@ def preview_music(
 @router.get("/{music_id}/stream")
 def stream_music(
     music_id: str,
-    token: str,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """
-    Stream music using token as query param.
+    Stream music using token as query param or Bearer header.
     Allows <audio src="...?token=..."> in browser.
     """
-    from app.core.security import decode_access_token
-    from app.models.models import User as UserModel
-
-    user_id = decode_access_token(token)
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Invalid token")
-
-    user = db.query(UserModel).filter(UserModel.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=401, detail="User not found")
-
     music_item = (
         db.query(Music)
-        .filter(Music.id == music_id, Music.user_id == user.id)
+        .filter(Music.id == music_id, Music.user_id == current_user.id)
         .first()
     )
     if not music_item:
