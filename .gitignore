@@ -1,0 +1,30 @@
+# Python & Virtualenv
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.venv/
+*.db
+*.sqlite3
+
+# Storage & Uploads
+storage/
+downloads/
+uploads/
+processed/
+output/
+
+# Node & Next.js
+node_modules/
+.next/
+out/
+build/
+dist/
+*.log
+
+# OS & Environment
+.DS_Store
+Thumbs.db
+.env
+.env.local
