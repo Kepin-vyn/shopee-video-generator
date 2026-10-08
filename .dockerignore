@@ -1,0 +1,10 @@
+.git/
+.gitignore
+*.md
+frontend/node_modules/
+frontend/.next/
+backend/__pycache__/
+backend/*.db
+backend/storage/
+worker/__pycache__/
+worker/*/__pycache__/

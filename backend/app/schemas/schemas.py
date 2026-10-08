@@ -85,6 +85,7 @@ class BatchStatusResponse(BaseModel):
     completed: int
     failed: int
     progress: int
+    queue_backend: Optional[str] = None  # "celery" or "background"
 
 # Music
 class MusicResponse(BaseModel):

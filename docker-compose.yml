@@ -1,64 +1,135 @@
-version: '3.8'
-
 services:
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: ../infra/docker/Dockerfile.frontend
-    ports:
-      - "3000:3000"
+  # ─── PostgreSQL Database ───────────────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    container_name: shopee-video-db
+    restart: unless-stopped
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
-    depends_on:
-      - backend
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: shopee_video_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - shopee-video-net
 
+  # ─── Redis (Celery broker & result backend) ────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: shopee-video-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - shopee-video-net
+
+  # ─── FastAPI Backend ───────────────────────────────────────────────────────
   backend:
     build:
       context: ./backend
-      dockerfile: ../infra/docker/Dockerfile.backend
+      dockerfile: Dockerfile
+    container_name: shopee-video-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/shopee_video_db
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: ${SECRET_KEY:-super-secret-key-change-in-production}
+      STORAGE_DIR: /app/storage
+    volumes:
+      - storage_data:/app/storage
     ports:
       - "8000:8000"
-    environment:
-      - DATABASE_URL=postgresql://postgres:postgres@db:5432/shopee_video_db
-      - REDIS_URL=redis://redis:6379/0
-      - STORAGE_DIR=/app/storage
-    volumes:
-      - storage_data:/app/storage
-    depends_on:
-      - db
-      - redis
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - shopee-video-net
 
+  # ─── Celery Worker (video rendering) ───────────────────────────────────────
   worker:
     build:
-      context: ./backend
-      dockerfile: ../infra/docker/Dockerfile.worker
-    command: celery -A worker.celery_app worker --loglevel=info
+      context: .
+      dockerfile: worker/Dockerfile
+    container_name: shopee-video-worker
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@db:5432/shopee_video_db
-      - REDIS_URL=redis://redis:6379/0
-      - STORAGE_DIR=/app/storage
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/shopee_video_db
+      REDIS_URL: redis://redis:6379/0
+      STORAGE_DIR: /app/storage
+      CELERY_CONCURRENCY: ${CELERY_CONCURRENCY:-2}
     volumes:
       - storage_data:/app/storage
+    networks:
+      - shopee-video-net
+
+  # ─── Nginx Reverse Proxy ───────────────────────────────────────────────────
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: shopee-video-nginx
+    restart: unless-stopped
     depends_on:
-      - db
-      - redis
-
-  db:
-    image: postgres:15-alpine
-    environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=shopee_video_db
+      - frontend
+      - backend
     ports:
-      - "5432:5432"
+      - "80:80"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - ./infra/nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - shopee-video-net
 
-  redis:
-    image: redis:7-alpine
+  # ─── Next.js Frontend ──────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api/v1}
+    container_name: shopee-video-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
     ports:
-      - "6379:6379"
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+    networks:
+      - shopee-video-net
 
+# ─── Volumes ───────────────────────────────────────────────────────────────────
 volumes:
   postgres_data:
+    name: shopee-video-postgres-data
+  redis_data:
+    name: shopee-video-redis-data
   storage_data:
+    name: shopee-video-storage
+
+# ─── Network ───────────────────────────────────────────────────────────────────
+networks:
+  shopee-video-net:
+    name: shopee-video-network
+    driver: bridge

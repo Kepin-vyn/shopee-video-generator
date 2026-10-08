@@ -1,5 +1,6 @@
 import os
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Shopee Affiliate Batch Video Generator"
@@ -7,16 +8,25 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
 
     # Database & Storage
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./shopee_video.db")
-    REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-    STORAGE_DIR: str = os.getenv("STORAGE_DIR", "./storage")
+    DATABASE_URL: str = "sqlite:///./shopee_video.db"
+    REDIS_URL: str = "redis://localhost:6379/0"
+    STORAGE_DIR: str = "./storage"
 
     # Auth
-    SECRET_KEY: str = os.getenv("SECRET_KEY", "super-secret-key-change-in-production-123456789")
+    SECRET_KEY: str = "super-secret-key-change-in-production-123456789"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
 
-    class Config:
-        case_sensitive = True
+    model_config = SettingsConfigDict(
+        # Look for .env in backend/ dir first, then project root
+        env_file=(
+            os.path.join(os.path.dirname(__file__), "..", "..", ".env"),  # backend/.env
+            os.path.join(os.path.dirname(__file__), "..", "..", "..", ".env"),  # project root .env
+        ),
+        env_file_encoding="utf-8",
+        case_sensitive=True,
+        extra="ignore",
+    )
+
 
 settings = Settings()
