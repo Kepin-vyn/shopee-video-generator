@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 
 interface UploadedFile {
   id: string;
@@ -25,7 +25,18 @@ export default function CreateBatchPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [renderProgress, setRenderProgress] = useState(0);
   const [renderCompleted, setRenderCompleted] = useState(false);
+  const [renderFailed, setRenderFailed] = useState(false);
+  const [renderError, setRenderError] = useState<string | null>(null);
   const [downloadZipUrl, setDownloadZipUrl] = useState<string | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    setIsMounted(true);
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
+  }, []);
 
   // Handle Drag & Drop / File Select
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -91,7 +102,10 @@ export default function CreateBatchPage() {
   // Start Batch Generation
   const startGenerating = async () => {
     setIsGenerating(true);
-    setRenderProgress(10);
+    setRenderCompleted(false);
+    setRenderFailed(false);
+    setRenderError(null);
+    setRenderProgress(5);
 
     if (batchId) {
       try {
@@ -100,43 +114,62 @@ export default function CreateBatchPage() {
         });
 
         if (genRes.ok) {
-          // Poll status
-          const interval = setInterval(async () => {
+          // Poll status every 1.5 seconds
+          pollingRef.current = setInterval(async () => {
             try {
               const statusRes = await fetch(`${API_BASE_URL}/batches/${batchId}/status`);
-              if (statusRes.ok) {
-                const statusData = await statusRes.json();
-                setRenderProgress(statusData.progress || 50);
+              if (!statusRes.ok) return;
 
-                if (statusData.status === "completed" || statusData.progress >= 100) {
-                  clearInterval(interval);
-                  setIsGenerating(false);
+              const statusData = await statusRes.json();
+              const total = statusData.total_videos || 1;
+              const completed = statusData.completed || 0;
+              const failed = statusData.failed || 0;
+              const done = completed + failed;
+
+              // Calculate real progress based on completed videos
+              const realProgress = Math.max(5, Math.round((done / total) * 100));
+              setRenderProgress(realProgress);
+
+              const TERMINAL_STATUSES = ["completed", "completed_with_errors", "failed"];
+
+              if (TERMINAL_STATUSES.includes(statusData.status)) {
+                if (pollingRef.current) clearInterval(pollingRef.current);
+                setIsGenerating(false);
+                setRenderProgress(100);
+
+                if (statusData.status === "failed") {
+                  setRenderFailed(true);
+                  setRenderError("Rendering gagal. Pastikan gambar valid dan FFmpeg telah terinstall.");
+                } else {
                   setRenderCompleted(true);
                   setDownloadZipUrl(`${API_BASE_URL}/batches/${batchId}/download`);
                 }
               }
             } catch {
-              // fallback
+              // ignore transient network errors during polling
             }
-          }, 1000);
+          }, 1500);
           return;
+        } else {
+          const errData = await genRes.json().catch(() => ({}));
+          throw new Error(errData.detail || "Generate request failed");
         }
-      } catch (e) {
-        console.warn("Backend generate request error, falling back to simulated generation", e);
+      } catch (e: any) {
+        console.warn("Backend generate error, using simulated mode:", e);
       }
     }
 
-    // Simulated progress fallback
-    let current = 10;
-    const interval = setInterval(() => {
-      current += 15;
+    // Simulated progress fallback (no backend / demo mode)
+    let current = 5;
+    const simInterval = setInterval(() => {
+      current += 10;
       setRenderProgress(Math.min(current, 100));
       if (current >= 100) {
-        clearInterval(interval);
+        clearInterval(simInterval);
         setIsGenerating(false);
         setRenderCompleted(true);
       }
-    }, 400);
+    }, 350);
   };
 
   const handleDownloadZip = () => {
@@ -302,21 +335,47 @@ export default function CreateBatchPage() {
       )}
 
       {/* Rendering Progress Section */}
-      {isGenerating && (
-        <div className="glass-card p-6 space-y-4 border-indigo-500/40 animate-pulse">
+      {(isGenerating || (renderProgress > 0 && !renderCompleted && !renderFailed)) && (
+        <div className="glass-card p-6 space-y-4 border-indigo-500/40">
           <div className="flex items-center justify-between text-sm">
-            <span className="font-semibold text-white">Rendering Batch Videos ({videoCount} Videos)...</span>
+            <span className="font-semibold text-white">
+              {isGenerating ? `Rendering Batch Videos (${videoCount} Videos)...` : "Memfinalisasi..."}
+            </span>
             <span className="font-mono text-indigo-400">{renderProgress}%</span>
           </div>
-          <div className="w-full bg-slate-800 h-3 rounded-full overflow-hidden p-0.5 border border-white/5">
+          <div className="w-full bg-slate-800 h-3 rounded-full overflow-hidden border border-white/5">
             <div
-              className="bg-gradient-primary h-full rounded-full transition-all duration-300"
+              className="bg-gradient-primary h-full rounded-full transition-all duration-500"
               style={{ width: `${renderProgress}%` }}
             />
           </div>
           <p className="text-xs text-slate-400 text-center">
-            FFmpeg worker sedang memproses product detection, review fitting, & mixing audio. Anda dapat tetap di halaman ini.
+            FFmpeg worker sedang memproses product detection, review fitting, &amp; mixing audio. Anda dapat tetap di halaman ini.
           </p>
+        </div>
+      )}
+
+      {/* Render Failed Error Block */}
+      {renderFailed && (
+        <div className="glass-card p-6 space-y-3 border-rose-500/40">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">❌</span>
+            <div>
+              <h3 className="font-bold text-white text-lg">Rendering Gagal</h3>
+              <p className="text-rose-400 text-sm mt-0.5">{renderError}</p>
+            </div>
+          </div>
+          <div className="p-4 rounded-xl bg-rose-500/5 border border-rose-500/20 text-xs text-slate-400 space-y-1">
+            <p>• Pastikan backend uvicorn berjalan di port 8000</p>
+            <p>• Cek log backend terminal untuk detail error FFmpeg</p>
+            <p>• Pastikan gambar yang diupload adalah format PNG/JPG/WEBP yang valid</p>
+          </div>
+          <button
+            onClick={() => { setRenderFailed(false); setRenderProgress(0); }}
+            className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm transition-colors"
+          >
+            🔄 Coba Lagi
+          </button>
         </div>
       )}
 
