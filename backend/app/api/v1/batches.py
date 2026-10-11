@@ -3,7 +3,7 @@ import shutil
 import zipfile
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, BackgroundTasks
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -201,14 +201,26 @@ def update_groups(
                     detail=f"Image {img_id} does not belong to this batch.",
                 )
 
-    # Re-sequence images according to the new group order
+    # Re-sequence images in two steps to avoid UNIQUE constraint (batch_id, sequence) violation
+    # Step 1: Set temporary negative sequences
+    temp_seq = -1
+    for group in sorted(groups, key=lambda g: g["video_sequence"]):
+        for img_id in group["image_ids"]:
+            img = db.query(BatchImage).filter(BatchImage.id == img_id).first()
+            if img:
+                img.sequence = temp_seq
+                temp_seq -= 1
+    db.flush()
+
+    # Step 2: Set final positive sequences
     new_seq = 1
     for group in sorted(groups, key=lambda g: g["video_sequence"]):
         for position, img_id in enumerate(group["image_ids"]):
             img = db.query(BatchImage).filter(BatchImage.id == img_id).first()
-            img.sequence = new_seq
-            img.image_type = "product" if position == 0 else "review"
-            new_seq += 1
+            if img:
+                img.sequence = new_seq
+                img.image_type = "product" if position == 0 else "review"
+                new_seq += 1
 
     db.commit()
     return {"message": "Groups updated successfully"}
@@ -347,7 +359,20 @@ def download_batch_zip(
             if vid.output_path and os.path.exists(vid.output_path):
                 zip_file.write(vid.output_path, arcname=f"video_{vid.sequence:03d}.mp4")
 
-    return FileResponse(path=zip_path, filename=zip_filename, media_type="application/zip")
+    def iterfile():
+        with open(zip_path, "rb") as f:
+            yield from f
+
+    return StreamingResponse(
+        iterfile(),
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": f'attachment; filename="{zip_filename}"',
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, OPTIONS",
+            "Access-Control-Allow-Headers": "Authorization, Content-Type",
+        }
+    )
 
 
 @router.get("/videos/{video_id}/download")

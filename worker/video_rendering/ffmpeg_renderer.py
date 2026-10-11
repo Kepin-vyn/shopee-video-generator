@@ -39,24 +39,27 @@ class FFmpegRenderer:
         img_path: str,
         clip_path: str,
         duration: float,
-        fps: int = 25,
+        fps: int = 30,
     ) -> None:
         """
         Convert a still JPEG/PNG/WEBP to a constant-fps H.264 clip.
-        The image is scaled to fit 1080×1920 with black padding (no stretching).
+        The image is scaled to fit 720×1280 with black padding (no stretching).
         """
         cmd = [
             self.ffmpeg_bin, "-y",
             "-loop", "1",
             "-i", img_path,
             "-vf", (
-                "scale=1080:1920:force_original_aspect_ratio=decrease,"
-                "pad=1080:1920:(ow-iw)/2:(oh-ih)/2:color=black,"
+                "scale=720:1280:force_original_aspect_ratio=decrease,"
+                "pad=720:1280:(ow-iw)/2:(oh-ih)/2:color=black,"
                 "format=yuv420p"          # explicit → avoids yuvj420p warning
             ),
             "-t", str(duration),
             "-r", str(fps),
             "-c:v", "libx264",
+            "-b:v", "10M",
+            "-maxrate", "10M",
+            "-bufsize", "20M",
             "-preset", "ultrafast",
             "-pix_fmt", "yuv420p",
             "-an",
@@ -73,7 +76,8 @@ class FFmpegRenderer:
         audio_path: str = None,
         duration_per_image: float = 2.5,
         transition_duration: float = 0.5,
-        fps: int = 25,
+        fps: int = 30,
+        bitrate: str = "10M",
     ) -> bool:
         """
         Render 4 images into a single MP4.
@@ -84,7 +88,8 @@ class FFmpegRenderer:
             audio_path:          Optional background music path.
             duration_per_image:  Seconds each image is visible (default 2.5 → 10s total).
             transition_duration: xfade duration in seconds (default 0.5).
-            fps:                 Output frame rate (default 25).
+            fps:                 Output frame rate (default 30).
+            bitrate:             Video bitrate (default "10M").
 
         Returns:
             True on success, raises RuntimeError on failure.
@@ -94,7 +99,7 @@ class FFmpegRenderer:
                 f"FFmpegRenderer expects exactly 4 images, got {len(image_paths)}"
             )
 
-        total_duration = duration_per_image * 4   # 10s
+        total_duration = duration_per_image * 4   # 10s (4 × 2.5s)
         td = transition_duration
         tmp_dir = os.path.dirname(output_path)
         os.makedirs(tmp_dir, exist_ok=True)
@@ -102,17 +107,19 @@ class FFmpegRenderer:
         clip_paths = []
         try:
             # Step 1 — still images → timed clips
-            clip_duration = duration_per_image + td   # slight overlap for smooth xfade
+            # Each clip needs to be longer to accommodate transition overlap
+            clip_duration = duration_per_image + td
             for i, img in enumerate(image_paths):
                 clip_path = os.path.join(tmp_dir, f"_tmp_clip_{i}.mp4")
                 self._make_clip(img, clip_path, duration=clip_duration, fps=fps)
                 clip_paths.append(clip_path)
 
             # Step 2 — xfade chain
-            # Each transition starts at: (i * duration_per_image) - td/2
-            o1 = duration_per_image - td / 2
-            o2 = o1 + duration_per_image - td / 2
-            o3 = o2 + duration_per_image - td / 2
+            # Transition starts when previous image has shown for (duration_per_image - td)
+            # This ensures each image is visible for exactly duration_per_image seconds
+            o1 = duration_per_image
+            o2 = o1 + duration_per_image
+            o3 = o2 + duration_per_image
 
             filter_complex = (
                 f"[0:v][1:v]xfade=transition=slideleft:duration={td}:offset={o1:.4f}[x1];"
@@ -136,8 +143,10 @@ class FFmpegRenderer:
                     "-map", f"{audio_idx}:a",
                     "-t", str(total_duration),
                     "-c:v", "libx264",
+                    "-b:v", bitrate,
+                    "-maxrate", bitrate,
+                    "-bufsize", "20M",
                     "-preset", "fast",
-                    "-crf", "23",
                     "-pix_fmt", "yuv420p",
                     "-r", str(fps),
                     "-c:a", "aac",
@@ -151,8 +160,10 @@ class FFmpegRenderer:
                     "-map", "[vout]",
                     "-t", str(total_duration),
                     "-c:v", "libx264",
+                    "-b:v", bitrate,
+                    "-maxrate", bitrate,
+                    "-bufsize", "20M",
                     "-preset", "fast",
-                    "-crf", "23",
                     "-pix_fmt", "yuv420p",
                     "-r", str(fps),
                     output_path,

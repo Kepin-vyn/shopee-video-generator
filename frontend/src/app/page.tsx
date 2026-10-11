@@ -6,6 +6,7 @@ import {
   createBatch,
   uploadImages,
   computeGrouping,
+  updateGroups,
   generateBatch,
   getBatchStatus,
   getBatchVideos,
@@ -112,6 +113,39 @@ export default function CreateBatchPage() {
 
       const grouping = await computeGrouping(bid);
       console.log("[Upload] Grouping:", grouping.complete_videos, "videos,", grouping.leftover_images, "leftover");
+      console.log("[Upload] Groups:", grouping.groups.map(g => ({seq: g.video_sequence, ids: g.image_ids})));
+
+      // Sync backend image IDs into localFiles
+      // Extract all images from groups in sequence order
+      const allBackendImages: Array<{ sequence: number; id: string; filename: string }> = [];
+      grouping.groups.forEach((g) => {
+        g.images.forEach((img) => {
+          allBackendImages.push({
+            sequence: img.sequence,
+            id: img.id,
+            filename: img.original_filename,
+          });
+        });
+      });
+      console.log("[Upload] allBackendImages:", allBackendImages.map(a => ({seq: a.sequence, id: a.id.substring(0, 8), name: a.filename})));
+
+      // Update localFiles to use backend IDs using functional state update
+      setLocalFiles((prev) => {
+        const newLocal = prev.map((lf, idx) => {
+          // Match by filename first, then fallback to sequence index
+          const backendImg =
+            allBackendImages.find((img) => img.filename === lf.name) ??
+            allBackendImages[idx];
+          if (backendImg) {
+            console.log("[Upload] Syncing", lf.name, "->", backendImg.id.substring(0, 8), "(filename match:", !!allBackendImages.find((img) => img.filename === lf.name), ")");
+            return { ...lf, id: backendImg.id };
+          }
+          console.log("[Upload] WARNING: No match for", lf.name, "at index", idx);
+          return lf;
+        });
+        return newLocal;
+      });
+
       setGroups(grouping.groups);
       setLeftover(grouping.leftover_images);
     } catch (e) {
@@ -135,7 +169,7 @@ export default function CreateBatchPage() {
   }
 
   // ── Grouping reorder ───────────────────────────────────────────────────────
-  // Simple move-up / move-down for each video group
+  // Move video groups up/down, or swap images within a group
 
   function moveGroup(index: number, direction: "up" | "down") {
     const next = [...groups];
@@ -145,6 +179,31 @@ export default function CreateBatchPage() {
     // Re-number sequences
     const renumbered = next.map((g, i) => ({ ...g, video_sequence: i + 1 }));
     setGroups(renumbered);
+  }
+
+  // Swap image positions within a group (to set product image as first)
+  function swapImageInGroup(groupIdx: number, imgPos1: number, imgPos2: number) {
+    const next = [...groups];
+    const group = next[groupIdx];
+    if (!group.image_ids || imgPos1 >= 4 || imgPos2 >= 4) return;
+    [group.image_ids[imgPos1], group.image_ids[imgPos2]] = [
+      group.image_ids[imgPos2],
+      group.image_ids[imgPos1],
+    ];
+    setGroups(next);
+  }
+
+  // Set same position as product (position 0) for all groups
+  function setProductPositionForAll(position: number) {
+    if (position === 0) return; // already product
+    const next = groups.map((group) => {
+      const ids = [...group.image_ids];
+      if (ids.length === 4 && position < 4) {
+        [ids[0], ids[position]] = [ids[position], ids[0]];
+      }
+      return { ...group, image_ids: ids };
+    });
+    setGroups(next);
   }
 
   // ── Generate ───────────────────────────────────────────────────────────────
@@ -189,6 +248,13 @@ export default function CreateBatchPage() {
     setRenderProgress(5);
 
     try {
+      // Save group reordering to backend before starting render
+      const groupPayload = groups.map((g) => ({
+        video_sequence: g.video_sequence,
+        image_ids: g.image_ids,
+      }));
+      await updateGroups(batchId, groupPayload);
+      
       await generateBatch(batchId);
       startPolling(batchId);
     } catch (e: unknown) {
@@ -241,12 +307,31 @@ export default function CreateBatchPage() {
     return localFiles[index]?.previewUrl ?? "";
   }
 
-  // Flatten group into ordered indices into localFiles
+  // Map group.image_ids to localFiles indices.
+  // Backend assigns sequence 1..N in upload order, and localFiles is appended in the
+  // same order — so sequence N maps to localFiles index N-1. This avoids relying on
+  // fragile id-sync between local placeholder ids and backend UUIDs.
   function groupToFileIndices(group: Group): number[] {
-    // groups are built from sequence numbers; use group position in groups array
-    const gIdx = groups.indexOf(group);
-    const base  = gIdx * 4;
-    return [base, base + 1, base + 2, base + 3];
+    // Build a global id → sequence lookup across every group's images
+    const idToSeq = new Map<string, number>();
+    for (const g of groups) {
+      for (const im of g.images ?? []) {
+        idToSeq.set(im.id, im.sequence);
+      }
+    }
+
+    return group.image_ids.map((imgId, pos) => {
+      const seq = idToSeq.get(imgId);
+      if (seq !== undefined && seq - 1 < localFiles.length) {
+        return seq - 1;
+      }
+      // Fallback 1: direct match against local (possibly synced) ids
+      const byId = localFiles.findIndex((f) => f.id === imgId);
+      if (byId >= 0) return byId;
+      // Fallback 2: positional within the batch
+      const globalPos = (group.video_sequence - 1) * 4 + pos;
+      return globalPos < localFiles.length ? globalPos : -1;
+    });
   }
 
   return (
@@ -359,13 +444,48 @@ export default function CreateBatchPage() {
               </div>
             </div>
 
-            <button
-              disabled={groups.length === 0 || isGenerating}
-              onClick={handleGenerate}
-              className="px-6 py-2.5 rounded-xl bg-gradient-primary hover:opacity-90 font-semibold text-white shadow-lg shadow-indigo-500/25 disabled:opacity-50 transition-all flex items-center gap-2"
-            >
-              {isGenerating ? "⚡ Generating…" : "🚀 Generate Videos"}
-            </button>
+            <div className="flex items-center gap-3">
+              {/* Global product position selector */}
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800/60 border border-white/10">
+                <span className="text-xs text-slate-400 whitespace-nowrap">Set Produk:</span>
+                <button
+                  onClick={() => setProductPositionForAll(0)}
+                  className="px-2 py-1 rounded text-xs font-bold bg-indigo-600 text-white"
+                  title="Position 1 (already product)"
+                >
+                  Pos 1
+                </button>
+                <button
+                  onClick={() => setProductPositionForAll(1)}
+                  className="px-2 py-1 rounded text-xs font-bold bg-slate-700 hover:bg-indigo-600 text-slate-300 hover:text-white transition-colors"
+                  title="Set position 2 as product for all videos"
+                >
+                  Pos 2
+                </button>
+                <button
+                  onClick={() => setProductPositionForAll(2)}
+                  className="px-2 py-1 rounded text-xs font-bold bg-slate-700 hover:bg-indigo-600 text-slate-300 hover:text-white transition-colors"
+                  title="Set position 3 as product for all videos"
+                >
+                  Pos 3
+                </button>
+                <button
+                  onClick={() => setProductPositionForAll(3)}
+                  className="px-2 py-1 rounded text-xs font-bold bg-slate-700 hover:bg-indigo-600 text-slate-300 hover:text-white transition-colors"
+                  title="Set position 4 as product for all videos"
+                >
+                  Pos 4
+                </button>
+              </div>
+
+              <button
+                disabled={groups.length === 0 || isGenerating}
+                onClick={handleGenerate}
+                className="px-6 py-2.5 rounded-xl bg-gradient-primary hover:opacity-90 font-semibold text-white shadow-lg shadow-indigo-500/25 disabled:opacity-50 transition-all flex items-center gap-2"
+              >
+                {isGenerating ? "⚡ Generating…" : "🚀 Generate Videos"}
+              </button>
+            </div>
           </div>
 
           {/* Leftover warning */}
@@ -413,13 +533,13 @@ export default function CreateBatchPage() {
                     </div>
                   </div>
 
-                  {/* Thumbnail row */}
+                  {/* Thumbnail row with swap controls */}
                   <div className="grid grid-cols-4 gap-1.5">
                     {fileIndices.map((fileIdx, pos) => {
                       const previewUrl = getPreviewUrl(fileIdx);
                       const isProduct  = pos === 0;
                       return (
-                        <div key={pos} className="relative">
+                        <div key={pos} className="relative group">
                           {previewUrl ? (
                             <img
                               src={previewUrl}
@@ -440,6 +560,19 @@ export default function CreateBatchPage() {
                           >
                             {isProduct ? "Prod" : `Rev${pos}`}
                           </span>
+                          
+                          {/* Swap to product button */}
+                          {!isProduct && (
+                            <button
+                              onClick={() => swapImageInGroup(gIdx, 0, pos)}
+                              title="Set as product image"
+                              className="absolute inset-0 rounded-lg bg-black/0 group-hover:bg-black/40 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center"
+                            >
+                              <span className="text-white text-xs font-bold bg-indigo-600 px-1 py-0.5 rounded">
+                                ⭐ Set Prod
+                              </span>
+                            </button>
+                          )}
                         </div>
                       );
                     })}
