@@ -4,17 +4,20 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { getToken, clearToken } from "@/lib/api";
 import { useEffect, useState } from "react";
+import { useTheme } from "next-themes";
+import { Zap, FolderKanban, Music2, Settings, Moon, Sun } from "lucide-react";
 
 const NAV_LINKS = [
-  { href: "/",        label: "➕ Create"       },
-  { href: "/history", label: "📜 History"      },
-  { href: "/music",   label: "🎵 Music Library" },
-  { href: "/settings",label: "⚙️ Settings"     },
+  { href: "/",        label: "Create",        icon: Zap },
+  { href: "/history", label: "History",       icon: FolderKanban },
+  { href: "/music",   label: "Music",         icon: Music2 },
+  { href: "/settings",label: "Settings",      icon: Settings },
 ];
 
 export default function NavBar() {
   const pathname = usePathname();
   const [loggedIn, setLoggedIn] = useState(false);
+  const { theme, setTheme } = useTheme();
 
   useEffect(() => {
     setLoggedIn(Boolean(getToken()));
@@ -28,26 +31,26 @@ export default function NavBar() {
   const isAuthPage = pathname === "/login" || pathname === "/register";
 
   return (
-    <header className="sticky top-0 z-50 backdrop-blur-md bg-[#0b0f19]/80 border-b border-white/10 px-6 py-4">
+    <header className="sticky top-0 z-50 backdrop-blur-md bg-background/80 border-b border-border px-6 py-4">
       {/* suppressHydrationWarning prevents Honey/shopping extensions from causing hydration errors */}
       <div suppressHydrationWarning className="max-w-7xl mx-auto flex items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-3 group">
-          <div suppressHydrationWarning className="w-10 h-10 rounded-xl bg-gradient-primary flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-indigo-500/30 group-hover:scale-105 transition-transform">
-            ⚡
+          <div suppressHydrationWarning className="w-10 h-10 rounded-xl bg-gradient-primary flex items-center justify-center text-white font-bold text-xl group-hover:scale-105 transition-transform">
+            <Zap className="w-5 h-5" />
           </div>
           <div suppressHydrationWarning>
-            <h1 className="font-bold text-lg leading-tight tracking-tight text-white">
+            <h1 className="font-bold text-lg leading-tight tracking-tight text-foreground">
               Shopee<span className="text-gradient ml-1">VideoGen</span>
             </h1>
-            <p className="text-xs text-slate-400">Batch Affiliate Generator</p>
+            <p className="text-xs text-muted-foreground">Batch Affiliate Generator</p>
           </div>
         </Link>
 
         {/* Nav */}
         {!isAuthPage && (
-          <nav className="flex items-center gap-1 bg-slate-900/60 p-1.5 rounded-xl border border-white/5">
-            {NAV_LINKS.map(({ href, label }) => {
+          <nav className="flex items-center gap-1 bg-muted/70 p-1.5 rounded-xl border border-border">
+            {NAV_LINKS.map(({ href, label, icon: Icon }) => {
               const active =
                 href === "/" ? pathname === "/" : pathname.startsWith(href);
               return (
@@ -56,23 +59,37 @@ export default function NavBar() {
                   href={href}
                   className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
                     active
-                      ? "text-white bg-indigo-600/30 border border-indigo-500/30 shadow-sm"
-                      : "text-slate-300 hover:text-white hover:bg-white/5"
+                      ? "text-white bg-primary/30 border border-primary/40 shadow-sm"
+                      : "text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/10"
                   }`}
                 >
-                  {label}
+                  <span className="flex items-center gap-2">
+                    <Icon className="w-4 h-4" /> {label}
+                  </span>
                 </Link>
               );
             })}
           </nav>
         )}
 
-        {/* Auth controls */}
+        {/* Theme toggle & Auth controls */}
         <div suppressHydrationWarning className="flex items-center gap-3">
+          <button
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            className="p-2 rounded-lg bg-muted border border-border text-muted-foreground hover:text-foreground transition-all"
+            title="Toggle theme"
+          >
+            {theme === "dark" ? (
+              <Sun className="w-5 h-5" />
+            ) : (
+              <Moon className="w-5 h-5" />
+            )}
+          </button>
+
           {loggedIn ? (
             <button
               onClick={handleLogout}
-              className="text-xs px-3 py-1.5 rounded-lg bg-slate-800 border border-white/10 text-slate-300 hover:text-white hover:bg-slate-700 transition-all"
+              className="text-xs px-3 py-1.5 rounded-lg bg-muted border border-border text-muted-foreground hover:text-foreground transition-all"
             >
               Logout
             </button>
@@ -80,7 +97,7 @@ export default function NavBar() {
             !isAuthPage && (
               <Link
                 href="/login"
-                className="text-xs px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-500 transition-all"
+                className="text-xs px-3 py-1.5 rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-all"
               >
                 Login
               </Link>

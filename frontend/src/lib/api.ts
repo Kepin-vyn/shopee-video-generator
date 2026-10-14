@@ -267,29 +267,10 @@ export function musicPreviewUrl(musicId: string): string {
   return `${API_BASE}/music/${musicId}/stream${token ? `?token=${token}` : ""}`;
 }
 
-export async function downloadBatchZip(batchId: string): Promise<void> {
+export function downloadBatchZip(batchId: string): void {
   const token = getToken();
-  const url = `${API_BASE}/batches/${batchId}/download`;
-  
-  const headers: Record<string, string> = {};
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-  
-  try {
-    const res = await fetch(url, { headers });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    
-    const blob = await res.blob();
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `batch_${batchId.slice(0, 8)}.zip`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(link.href);
-  } catch (err) {
-    console.error("[downloadBatchZip] Error:", err);
-    throw err;
-  }
+  const url = `${API_BASE}/batches/${batchId}/download${token ? `?token=${token}` : ""}`;
+  window.location.href = url;
 }
 
 export async function deleteMusic(musicId: string): Promise<void> {

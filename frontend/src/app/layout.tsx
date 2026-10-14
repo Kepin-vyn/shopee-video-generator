@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ThemeProvider } from "next-themes";
 import Link from "next/link";
 import "./globals.css";
 import NavBar from "./NavBar";
@@ -15,24 +16,30 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="id">
+    <html lang="id" suppressHydrationWarning className="dark">
       <body
         suppressHydrationWarning
         className="antialiased min-h-screen flex flex-col relative overflow-x-hidden"
       >
-        <div suppressHydrationWarning className="bg-gradient-glow" />
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem={true}
+          disableTransitionOnChange={false}
+        >
+          <div className="bg-gradient-glow dark:opacity-20" suppressHydrationWarning />
+          <NavBar />
 
-        <NavBar />
+          {/* Main Content */}
+          <main className="flex-1 max-w-7xl w-full mx-auto p-6 relative z-10">
+            {children}
+          </main>
 
-        {/* Main Content */}
-        <main className="flex-1 max-w-7xl w-full mx-auto p-6 relative z-10">
-          {children}
-        </main>
-
-        {/* Footer */}
-        <footer className="border-t border-white/5 py-6 text-center text-xs text-slate-500">
-          Shopee Affiliate Batch Video Generator v1.0 • Built for High-Volume Creators
-        </footer>
+          {/* Footer */}
+          <footer className="border-t border-border py-6 text-center text-xs text-muted-foreground">
+            Shopee Affiliate Batch Video Generator v1.0 • Built for High-Volume Creators
+          </footer>
+        </ThemeProvider>
       </body>
     </html>
   );

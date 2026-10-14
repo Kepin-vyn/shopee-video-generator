@@ -17,6 +17,7 @@ import {
   type Group,
   type VideoRecord,
 } from "@/lib/api";
+import { User, AlertTriangle, X, RotateCcw, Zap, RefreshCw, FolderOpen, ArrowDown, CheckCircle2, Archive, Download } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -337,25 +338,25 @@ export default function CreateBatchPage() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 glass-card p-6 border-indigo-500/20">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 glass-card p-6 border-primary/20 glass-card-hover">
         <div>
-          <h2 className="text-2xl font-bold text-white tracking-tight">
+          <h2 className="text-2xl font-bold text-foreground tracking-tight">
             Batch Video Generator
           </h2>
-          <p className="text-slate-400 text-sm mt-1">
+          <p className="text-muted-foreground text-sm mt-1">
             Upload screenshot produk &amp; review secara berurutan. Sistem mengelompokkan &amp; merender video otomatis.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <span className="px-3 py-1.5 rounded-lg bg-slate-800 border border-white/10 text-xs text-slate-300">
-            Preset: <span className="font-semibold text-indigo-400">Basic Slide 10s (9:16)</span>
+          <span className="px-3 py-1.5 rounded-lg bg-muted border border-border text-xs text-foreground">
+            Preset: <span className="font-semibold text-primary">Basic Slide 10s (9:16)</span>
           </span>
-          <span className="px-3 py-1.5 rounded-lg bg-slate-800 border border-white/10 text-xs text-slate-300">
-            Music: <span className="font-semibold text-emerald-400">Auto Shuffle</span>
+          <span className="px-3 py-1.5 rounded-lg bg-muted border border-border text-xs text-foreground">
+            Music: <span className="font-semibold text-emerald-500">Auto Shuffle</span>
           </span>
           {userEmail && (
-            <span className="px-3 py-1.5 rounded-lg bg-slate-800 border border-white/10 text-xs text-slate-400 truncate max-w-[180px]">
-              👤 {userEmail}
+            <span className="px-3 py-1.5 rounded-lg bg-muted border border-border text-xs text-muted-foreground truncate max-w-[180px] flex items-center gap-1">
+              <User className="w-3 h-3" /> {userEmail}
             </span>
           )}
         </div>
@@ -365,10 +366,10 @@ export default function CreateBatchPage() {
       <div className="glass-card p-6 space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <span className="w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-sm">
+            <span className="w-7 h-7 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm">
               1
             </span>
-            <h3 className="font-semibold text-lg text-white">Upload Screenshots</h3>
+            <h3 className="font-semibold text-lg text-foreground">Upload Screenshots</h3>
           </div>
           {localFiles.length > 0 && (
             <button
@@ -386,8 +387,8 @@ export default function CreateBatchPage() {
           onDragLeave={() => setDragOver(false)}
           className={`border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center transition-all ${
             dragOver
-              ? "border-indigo-500 bg-indigo-500/10"
-              : "border-slate-700 hover:border-indigo-500/50 bg-slate-900/40 hover:bg-slate-900/70"
+              ? "border-primary bg-primary/10"
+              : "border-border hover:border-primary/50 bg-muted/40 hover:bg-muted"
           }`}
         >
           <label className="flex flex-col items-center cursor-pointer">
@@ -398,20 +399,20 @@ export default function CreateBatchPage() {
               onChange={handleFileInputChange}
               className="hidden"
             />
-            <div className="w-14 h-14 rounded-2xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center text-2xl mb-3 border border-indigo-500/20">
-              📁
+            <div className="w-14 h-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center text-2xl mb-3 border border-primary/20">
+              <FolderOpen />
             </div>
-            <p className="font-medium text-slate-200 text-base text-center">
+            <p className="font-medium text-foreground text-base text-center">
               Drag &amp; drop screenshots, atau{" "}
-              <span className="text-indigo-400 underline">Pilih File</span>
+              <span className="text-primary underline">Pilih File</span>
             </p>
-            <p className="text-xs text-slate-500 mt-1 text-center">
+            <p className="text-xs text-muted-foreground mt-1 text-center">
               PNG · JPG · WEBP &nbsp;|&nbsp; 01.png = produk, 02–04.png = review
             </p>
           </label>
 
           {isUploading && (
-            <p className="text-xs text-indigo-400 mt-3 font-medium animate-pulse">
+            <p className="text-xs text-primary mt-3 font-medium animate-pulse">
               Uploading to backend…
             </p>
           )}
@@ -419,7 +420,7 @@ export default function CreateBatchPage() {
 
         {/* Uploaded count badge */}
         {localFiles.length > 0 && (
-          <p className="text-xs text-slate-400 text-right">
+          <p className="text-xs text-muted-foreground text-right">
             {localFiles.length} file dipilih
           </p>
         )}
@@ -430,15 +431,15 @@ export default function CreateBatchPage() {
         <div className="glass-card p-6 space-y-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <span className="w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-sm">
+              <span className="w-7 h-7 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm">
                 2
               </span>
               <div>
-                <h3 className="font-semibold text-lg text-white">Grouping Preview</h3>
-                <p className="text-xs text-slate-400">
-                  <span className="text-indigo-400 font-bold">{localFiles.length} gambar</span>
+                <h3 className="font-semibold text-lg text-foreground">Grouping Preview</h3>
+                <p className="text-xs text-muted-foreground">
+                  <span className="text-primary font-bold">{localFiles.length} gambar</span>
                   {" → "}
-                  <span className="text-emerald-400 font-bold">{groups.length} video</span>
+                  <span className="text-emerald-500 font-bold">{groups.length} video</span>
                   {" (4 gambar / video)"}
                 </p>
               </div>
@@ -446,32 +447,32 @@ export default function CreateBatchPage() {
 
             <div className="flex items-center gap-3">
               {/* Global product position selector */}
-              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800/60 border border-white/10">
-                <span className="text-xs text-slate-400 whitespace-nowrap">Set Produk:</span>
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted border border-border">
+                <span className="text-xs text-muted-foreground whitespace-nowrap">Set Produk:</span>
                 <button
                   onClick={() => setProductPositionForAll(0)}
-                  className="px-2 py-1 rounded text-xs font-bold bg-indigo-600 text-white"
+                  className="px-2 py-1 rounded text-xs font-bold bg-primary text-white"
                   title="Position 1 (already product)"
                 >
                   Pos 1
                 </button>
                 <button
                   onClick={() => setProductPositionForAll(1)}
-                  className="px-2 py-1 rounded text-xs font-bold bg-slate-700 hover:bg-indigo-600 text-slate-300 hover:text-white transition-colors"
+                  className="px-2 py-1 rounded text-xs font-bold bg-muted hover:bg-primary text-muted-foreground hover:text-white transition-colors"
                   title="Set position 2 as product for all videos"
                 >
                   Pos 2
                 </button>
                 <button
                   onClick={() => setProductPositionForAll(2)}
-                  className="px-2 py-1 rounded text-xs font-bold bg-slate-700 hover:bg-indigo-600 text-slate-300 hover:text-white transition-colors"
+                  className="px-2 py-1 rounded text-xs font-bold bg-muted hover:bg-primary text-muted-foreground hover:text-white transition-colors"
                   title="Set position 3 as product for all videos"
                 >
                   Pos 3
                 </button>
                 <button
                   onClick={() => setProductPositionForAll(3)}
-                  className="px-2 py-1 rounded text-xs font-bold bg-slate-700 hover:bg-indigo-600 text-slate-300 hover:text-white transition-colors"
+                  className="px-2 py-1 rounded text-xs font-bold bg-muted hover:bg-primary text-muted-foreground hover:text-white transition-colors"
                   title="Set position 4 as product for all videos"
                 >
                   Pos 4
@@ -481,9 +482,19 @@ export default function CreateBatchPage() {
               <button
                 disabled={groups.length === 0 || isGenerating}
                 onClick={handleGenerate}
-                className="px-6 py-2.5 rounded-xl bg-gradient-primary hover:opacity-90 font-semibold text-white shadow-lg shadow-indigo-500/25 disabled:opacity-50 transition-all flex items-center gap-2"
+                className="px-6 py-2.5 rounded-xl bg-gradient-primary hover:opacity-90 font-semibold text-white disabled:opacity-50 transition-all flex items-center gap-2"
               >
-                {isGenerating ? "⚡ Generating…" : "🚀 Generate Videos"}
+                {isGenerating ? (
+                  <>
+                    <RotateCcw className="w-4 h-4 animate-spin" />
+                    Generating…
+                  </>
+                ) : (
+                  <>
+                    <Zap className="w-4 h-4" />
+                    Generate Videos
+                  </>
+                )}
               </button>
             </div>
           </div>
@@ -491,7 +502,7 @@ export default function CreateBatchPage() {
           {/* Leftover warning */}
           {leftover > 0 && (
             <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center gap-3 text-amber-300 text-sm">
-              <span className="text-xl shrink-0">⚠️</span>
+              <AlertTriangle className="w-5 h-5 shrink-0" />
               <p>
                 <span className="font-bold">{leftover} screenshot tersisa</span>{" "}
                 tidak genap 4 gambar dan tidak akan dirender.
@@ -506,11 +517,11 @@ export default function CreateBatchPage() {
               return (
                 <div
                   key={group.video_sequence}
-                  className="p-4 rounded-xl bg-slate-900/60 border border-white/5 hover:border-indigo-500/30 transition-all space-y-3"
+                  className="p-4 rounded-xl bg-muted/60 border border-border hover:border-primary/30 transition-all space-y-3"
                 >
                   {/* Card header */}
-                  <div className="flex items-center justify-between text-xs border-b border-white/5 pb-2">
-                    <span className="font-bold text-slate-300">
+                  <div className="flex items-center justify-between text-xs border-b border-border pb-2">
+                    <span className="font-bold text-muted-foreground">
                       Video #{String(group.video_sequence).padStart(2, "0")}
                     </span>
                     <div className="flex gap-1">
@@ -518,7 +529,7 @@ export default function CreateBatchPage() {
                         onClick={() => moveGroup(gIdx, "up")}
                         disabled={gIdx === 0}
                         title="Move up"
-                        className="w-6 h-6 rounded bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-slate-300 flex items-center justify-center transition-colors"
+                        className="w-6 h-6 rounded bg-muted hover:bg-muted/80 disabled:opacity-30 text-muted-foreground flex items-center justify-center transition-colors"
                       >
                         ↑
                       </button>
@@ -526,9 +537,9 @@ export default function CreateBatchPage() {
                         onClick={() => moveGroup(gIdx, "down")}
                         disabled={gIdx === groups.length - 1}
                         title="Move down"
-                        className="w-6 h-6 rounded bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-slate-300 flex items-center justify-center transition-colors"
+                        className="w-6 h-6 rounded bg-muted hover:bg-muted/80 disabled:opacity-30 text-muted-foreground flex items-center justify-center transition-colors"
                       >
-                        ↓
+                        <ArrowDown className="w-3 h-3" />
                       </button>
                     </div>
                   </div>
@@ -545,17 +556,17 @@ export default function CreateBatchPage() {
                               src={previewUrl}
                               alt={isProduct ? "Product" : `Review ${pos}`}
                               className={`w-full h-20 object-cover rounded-lg border ${
-                                isProduct ? "border-indigo-500/60" : "border-slate-700"
+                                isProduct ? "border-primary" : "border-border"
                               }`}
                             />
                           ) : (
-                            <div className="w-full h-20 rounded-lg bg-slate-800 border border-slate-700" />
+                            <div className="w-full h-20 rounded-lg bg-muted border border-border" />
                           )}
                           <span
                             className={`absolute bottom-1 left-1 text-[9px] px-1 rounded font-bold ${
                               isProduct
-                                ? "bg-indigo-600 text-white"
-                                : "bg-slate-800 text-slate-300"
+                                ? "bg-primary text-white"
+                                : "bg-muted text-foreground"
                             }`}
                           >
                             {isProduct ? "Prod" : `Rev${pos}`}
@@ -568,8 +579,8 @@ export default function CreateBatchPage() {
                               title="Set as product image"
                               className="absolute inset-0 rounded-lg bg-black/0 group-hover:bg-black/40 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center"
                             >
-                              <span className="text-white text-xs font-bold bg-indigo-600 px-1 py-0.5 rounded">
-                                ⭐ Set Prod
+                              <span className="text-white text-xs font-bold bg-primary px-1 py-0.5 rounded">
+                                Set Prod
                               </span>
                             </button>
                           )}
@@ -586,20 +597,20 @@ export default function CreateBatchPage() {
 
       {/* ── Rendering Progress ─────────────────────────────────────────────── */}
       {(isGenerating || (renderProgress > 0 && !renderDone && !renderFailed)) && (
-        <div className="glass-card p-6 space-y-4 border-indigo-500/40">
+        <div className="glass-card p-6 space-y-4 border-primary/40">
           <div className="flex items-center justify-between text-sm">
-            <span className="font-semibold text-white">
+            <span className="font-semibold text-foreground">
               Rendering {groups.length} video…
             </span>
-            <span className="font-mono text-indigo-400">{renderProgress}%</span>
+            <span className="font-mono text-primary">{renderProgress}%</span>
           </div>
-          <div className="w-full bg-slate-800 h-3 rounded-full overflow-hidden border border-white/5">
+          <div className="w-full bg-muted h-3 rounded-full overflow-hidden border border-border">
             <div
               className="bg-gradient-primary h-full rounded-full transition-all duration-500"
               style={{ width: `${renderProgress}%` }}
             />
           </div>
-          <p className="text-xs text-slate-400 text-center">
+          <p className="text-xs text-muted-foreground text-center">
             FFmpeg worker memproses image → clip → xfade → audio mix. Anda bisa meninggalkan halaman.
           </p>
         </div>
@@ -607,24 +618,24 @@ export default function CreateBatchPage() {
 
       {/* ── Render Failed ─────────────────────────────────────────────────── */}
       {renderFailed && (
-        <div className="glass-card p-6 space-y-3 border-rose-500/40">
+        <div className="glass-card p-6 space-y-3 border-destructive/40">
           <div className="flex items-center gap-3">
-            <span className="text-2xl">❌</span>
+            <X className="w-6 h-6 text-destructive" />
             <div>
-              <h3 className="font-bold text-white text-lg">Rendering Gagal</h3>
-              <p className="text-rose-400 text-sm mt-0.5">{renderError}</p>
+              <h3 className="font-bold text-foreground text-lg">Rendering Gagal</h3>
+              <p className="text-destructive text-sm mt-0.5">{renderError}</p>
             </div>
           </div>
-          <div className="p-4 rounded-xl bg-rose-500/5 border border-rose-500/20 text-xs text-slate-400 space-y-1">
+          <div className="p-4 rounded-xl bg-destructive/5 border border-destructive/20 text-xs text-muted-foreground space-y-1">
             <p>• Pastikan backend berjalan di port 8000</p>
             <p>• Cek log backend untuk detail error FFmpeg</p>
             <p>• Gambar harus PNG / JPG / WEBP yang valid</p>
           </div>
           <button
             onClick={() => { setRenderFailed(false); setRenderProgress(0); }}
-            className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm transition-colors"
+            className="px-4 py-2 rounded-lg bg-muted hover:bg-muted/80 text-muted-foreground text-sm transition-colors flex items-center gap-2"
           >
-            🔄 Coba Lagi
+            <RotateCcw className="w-4 h-4" /> Coba Lagi
           </button>
         </div>
       )}
@@ -633,23 +644,23 @@ export default function CreateBatchPage() {
       {renderDone && batchId && (
         <div className="glass-card p-6 space-y-6 border-emerald-500/30">
           {/* Results header */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/5 pb-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-4">
             <div className="flex items-center gap-3">
-              <span className="text-xl">✅</span>
+              <CheckCircle2 className="w-5 h-5 text-emerald-500" />
               <div>
-                <h3 className="font-bold text-xl text-white">
+                <h3 className="font-bold text-xl text-foreground">
                   {groups.length} Video Siap!
                 </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
+                <p className="text-xs text-muted-foreground mt-0.5">
                   Server-side rendering selesai.
                 </p>
               </div>
             </div>
             <button
               onClick={() => batchId && downloadBatchZip(batchId)}
-              className="px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 font-bold text-white shadow-lg shadow-emerald-500/25 transition-all flex items-center gap-2"
+              className="px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 font-bold text-white transition-all flex items-center gap-2"
             >
-              📦 Download All as ZIP
+              <Archive className="w-5 h-5" /> Download All as ZIP
             </button>
           </div>
 
@@ -666,12 +677,12 @@ export default function CreateBatchPage() {
                   key={video.id}
                   className={`p-3 rounded-xl border transition-all space-y-3 ${
                     isFailed
-                      ? "bg-rose-900/20 border-rose-500/30"
-                      : "bg-slate-900/80 border-slate-800 hover:border-emerald-500/40"
+                      ? "bg-destructive/10 border-destructive/30"
+                      : "bg-muted/50 border-border hover:border-primary/40"
                   }`}
                 >
                   {/* Video preview */}
-                  <div className="relative aspect-[9/16] bg-slate-950 rounded-lg overflow-hidden">
+                  <div className="relative aspect-[9/16] bg-black rounded-lg overflow-hidden">
                     {video.status === "completed" && video.output_path ? (
                       // Native HTML5 video player with stream URL (token in query param)
                       <video
@@ -693,13 +704,15 @@ export default function CreateBatchPage() {
                         )}
                         <div className="relative z-10 text-center">
                           {isRendering ? (
-                            <span className="text-amber-400 text-xs animate-pulse">
-                              ⚡ Rendering…
+                            <span className="text-amber-400 text-xs flex items-center gap-1">
+                              <Zap className="w-3 h-3 animate-pulse" /> Rendering…
                             </span>
                           ) : isFailed ? (
-                            <span className="text-rose-400 text-xs">❌ Failed</span>
+                            <span className="text-rose-400 text-xs flex items-center gap-1">
+                              <X className="w-3 h-3" /> Failed
+                            </span>
                           ) : (
-                            <span className="text-slate-500 text-xs">⏳ Pending</span>
+                            <span className="text-muted-foreground text-xs">⏳ Pending</span>
                           )}
                         </div>
                       </div>
@@ -721,7 +734,7 @@ export default function CreateBatchPage() {
 
                   {/* Card footer */}
                   <div className="flex items-center justify-between text-xs pt-1 gap-1">
-                    <span className="font-bold text-slate-300 truncate">
+                    <span className="font-bold text-muted-foreground truncate">
                       video_{String(video.sequence).padStart(3, "0")}.mp4
                     </span>
                     <div className="flex items-center gap-1 shrink-0">
@@ -730,18 +743,18 @@ export default function CreateBatchPage() {
                           href={videoStreamUrl(video.id)}
                           download={`video_${String(video.sequence).padStart(3, "0")}.mp4`}
                           title="Download"
-                          className="px-2 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-500 transition-colors"
+                          className="px-2 py-1 rounded bg-primary text-white hover:bg-primary-hover transition-colors"
                         >
-                          ⬇️
+                          <Download className="w-3 h-3" />
                         </a>
                       )}
                       {(isFailed || video.status === "completed") && (
                         <button
                           onClick={() => handleRegenerate(video.id)}
                           title="Re-render"
-                          className="px-2 py-1 rounded bg-slate-700 text-slate-300 hover:bg-slate-600 transition-colors"
+                          className="px-2 py-1 rounded bg-muted text-muted-foreground hover:bg-muted/80 transition-colors"
                         >
-                          🔄
+                          <RotateCcw className="w-3 h-3" />
                         </button>
                       )}
                     </div>
@@ -749,7 +762,7 @@ export default function CreateBatchPage() {
 
                   {/* Error message */}
                   {isFailed && video.error_message && (
-                    <p className="text-xs text-rose-400 line-clamp-2">
+                    <p className="text-xs text-destructive line-clamp-2">
                       {video.error_message}
                     </p>
                   )}
